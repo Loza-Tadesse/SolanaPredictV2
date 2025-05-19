@@ -21,19 +21,54 @@ st.set_page_config(
     layout="wide",
 )
 
+import pandas as pd
+import plotly.graph_objects as go
+
 st.title("Solana 4-Hour Prediction Dashboard")
 st.caption("Live price feed with model forecasts.")
 
-manager = ModelManager()
-bundle = build_data_bundle()
+@st.cache_resource(show_spinner=False)
+def get_model_manager() -> ModelManager:
+    return ModelManager()
+
+@st.cache_data(ttl=60, show_spinner=False)
+def load_data():
+    return build_data_bundle()
+
+manager = get_model_manager()
+bundle = load_data()
 
 with st.spinner("Loading models..."):
     manager.ensure_models(bundle.feature_frame)
 
 results = manager.predict_all(bundle.feature_frame)
+actual_price = bundle.aligned_price_frame["price"].iloc[-30:]
 
-if results:
-    st.success(f"Loaded {len(results)} models successfully")
-    for name, result in results.items():
-        st.subheader(name)
-        st.metric("MAE", f"{result.metrics['mae']:.4f}")
+# Plot
+fig = go.Figure()
+fig.add_trace(go.Scatter(
+    x=actual_price.index,
+    y=actual_price.values,
+    name="Actual Price",
+    mode="lines"
+))
+
+for name, result in results.items():
+    preds = result.predictions.iloc[-30:]
+    fig.add_trace(go.Scatter(
+        x=preds.index,
+        y=preds.values,
+        name=name,
+        mode="lines",
+        line={"dash": "dash"}
+    ))
+
+st.plotly_chart(fig, use_container_width=True)
+
+# Metrics
+for name, result in results.items():
+    st.subheader(name)
+    col1, col2, col3 = st.columns(3)
+    col1.metric("MAE", f"{result.metrics['mae']:.4f}")
+    col2.metric("RMSE", f"{result.metrics['rmse']:.4f}")
+    col3.metric("R²", f"{result.metrics.get('r2', 0):.4f}")
