@@ -12,14 +12,18 @@ PROJECT_ROOT = APP_DIR.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-from streamlit_app.data_pipeline import build_data_bundle
+from streamlit_app.data_pipeline import build_data_bundle, DEFAULT_MINUTES
 from streamlit_app.model_manager import ModelManager
 
 st.set_page_config(
     page_title="Solana 4H Forecast Monitor",
     page_icon="📈",
     layout="wide",
+    initial_sidebar_state="collapsed",
 )
+
+DISPLAY_MINUTES = 30
+AUTO_RETRAIN_STATE_KEY = "auto_retrain_state"
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -32,8 +36,38 @@ def get_model_manager() -> ModelManager:
     return ModelManager()
 
 @st.cache_data(ttl=60, show_spinner=False)
-def load_data():
-    return build_data_bundle()
+def load_data(minutes: int = DEFAULT_MINUTES):
+    return build_data_bundle(minutes=minutes)
+
+def _auto_retrain_models(manager, feature_frame, latest_timestamp):
+    state = st.session_state.setdefault(
+        AUTO_RETRAIN_STATE_KEY, {"timestamp": None, "metrics": {}}
+    )
+    stored_timestamp = state.get("timestamp")
+    previous_ts = pd.Timestamp(stored_timestamp) if stored_timestamp else None
+
+    if latest_timestamp is None or (previous_ts and latest_timestamp <= previous_ts):
+        return state.get("metrics", {}), False
+
+    if previous_ts is None:
+        st.session_state[AUTO_RETRAIN_STATE_KEY] = {
+            "timestamp": latest_timestamp.isoformat(),
+            "metrics": state.get("metrics", {}),
+        }
+        return state.get("metrics", {}), False
+
+    new_rows = feature_frame[feature_frame.index > previous_ts]
+    if new_rows.empty:
+        return state.get("metrics", {}), False
+
+    with st.spinner("Updating models..."):
+        metrics_snapshot = manager.update_with_new_data(feature_frame, new_rows)
+
+    st.session_state[AUTO_RETRAIN_STATE_KEY] = {
+        "timestamp": latest_timestamp.isoformat(),
+        "metrics": metrics_snapshot,
+    }
+    return metrics_snapshot, True
 
 manager = get_model_manager()
 bundle = load_data()
