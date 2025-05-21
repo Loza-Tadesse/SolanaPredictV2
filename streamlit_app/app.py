@@ -2,9 +2,51 @@
 from __future__ import annotations
 
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Dict
 
+import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
+
+CARD_STYLE = """
+<style>
+.model-card {
+    border-radius: 16px;
+    padding: 20px 24px;
+    background: rgba(30, 41, 59, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
+}
+.model-card h3 {
+    margin: 0;
+    font-size: 1.4rem;
+    color: #f8fafc;
+}
+.model-card .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin: 20px 0;
+}
+.model-card .metric {
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.6);
+}
+.model-card .metric-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+}
+.model-card .metric-value {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #f8fafc;
+}
+</style>
+"""
 
 # Ensure the project root is on sys.path
 APP_DIR = Path(__file__).resolve().parent
@@ -72,11 +114,16 @@ def _auto_retrain_models(manager, feature_frame, latest_timestamp):
 manager = get_model_manager()
 bundle = load_data()
 
+st.markdown(CARD_STYLE, unsafe_allow_html=True)
+
 with st.spinner("Loading models..."):
     manager.ensure_models(bundle.feature_frame)
 
+latest_timestamp = bundle.feature_frame.index[-1] if not bundle.feature_frame.empty else None
+metrics_snapshot, retrained = _auto_retrain_models(manager, bundle.feature_frame, latest_timestamp)
+
 results = manager.predict_all(bundle.feature_frame)
-actual_price = bundle.aligned_price_frame["price"].iloc[-30:]
+actual_price = bundle.aligned_price_frame["price"].iloc[-DISPLAY_MINUTES:]
 
 # Plot
 fig = go.Figure()
@@ -99,10 +146,26 @@ for name, result in results.items():
 
 st.plotly_chart(fig, use_container_width=True)
 
-# Metrics
+st.markdown("### Model Performance")
+
 for name, result in results.items():
-    st.subheader(name)
-    col1, col2, col3 = st.columns(3)
-    col1.metric("MAE", f"{result.metrics['mae']:.4f}")
-    col2.metric("RMSE", f"{result.metrics['rmse']:.4f}")
-    col3.metric("R²", f"{result.metrics.get('r2', 0):.4f}")
+    card_html = f"""
+<div class="model-card">
+    <h3>{name}</h3>
+    <div class="metrics-grid">
+        <div class="metric">
+            <div class="metric-label">MAE</div>
+            <div class="metric-value">{result.metrics['mae']:.4f}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">RMSE</div>
+            <div class="metric-value">{result.metrics['rmse']:.4f}</div>
+        </div>
+        <div class="metric">
+            <div class="metric-label">R²</div>
+            <div class="metric-value">{result.metrics.get('r2', 0):.4f}</div>
+        </div>
+    </div>
+</div>
+"""
+    st.markdown(card_html, unsafe_allow_html=True)
