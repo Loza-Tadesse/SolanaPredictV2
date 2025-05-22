@@ -70,8 +70,37 @@ AUTO_RETRAIN_STATE_KEY = "auto_retrain_state"
 import pandas as pd
 import plotly.graph_objects as go
 
+HEADER_STYLE = """
+<style>
+.header-metrics {
+    display: flex;
+    justify-content: center;
+    gap: 18px;
+    margin: 18px 0 28px;
+}
+.header-metric {
+    min-width: 220px;
+    padding: 18px 22px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(236, 72, 153, 0.25));
+    text-align: center;
+}
+.header-metric .label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: #cbd5f5;
+}
+.header-metric .value {
+    font-size: 1.6rem;
+    font-weight: 600;
+    color: #fdf4ff;
+}
+</style>
+"""
+
+st.markdown(HEADER_STYLE, unsafe_allow_html=True)
 st.title("Solana 4-Hour Prediction Dashboard")
-st.caption("Live price feed with model forecasts.")
+st.caption("Live price feed with ensemble model forecasts and auto-updates.")
 
 @st.cache_resource(show_spinner=False)
 def get_model_manager() -> ModelManager:
