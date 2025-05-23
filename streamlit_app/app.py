@@ -2,13 +2,14 @@
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict
 
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
 CARD_STYLE = """
 <style>
@@ -106,9 +107,19 @@ st.caption("Live price feed with ensemble model forecasts and auto-updates.")
 def get_model_manager() -> ModelManager:
     return ModelManager()
 
-@st.cache_data(ttl=60, show_spinner=False)
+@st.cache_data(ttl=55, show_spinner=False)
 def load_data(minutes: int = DEFAULT_MINUTES):
     return build_data_bundle(minutes=minutes)
+
+def _milliseconds_until_next_minute(now: datetime | None = None) -> int:
+    current = now or datetime.now(timezone.utc)
+    next_minute = (current.replace(second=0, microsecond=0) + timedelta(minutes=1))
+    delta = next_minute - current
+    millis = int(delta.total_seconds() * 1000)
+    return max(millis, 250)
+
+interval_ms = _milliseconds_until_next_minute()
+_ = st_autorefresh(interval=interval_ms, limit=None, debounce=False, key="solana_price_refresh")
 
 def _auto_retrain_models(manager, feature_frame, latest_timestamp):
     state = st.session_state.setdefault(
