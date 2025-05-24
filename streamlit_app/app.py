@@ -68,6 +68,15 @@ st.set_page_config(
 DISPLAY_MINUTES = 30
 AUTO_RETRAIN_STATE_KEY = "auto_retrain_state"
 
+MODEL_MANAGER_VERSION = "2025-05-24-inference-updates"
+
+PROJECT_DESCRIPTION = (
+    "Real-time dashboard for monitoring Solana forecasts with incremental learning, minute-by-minute updates, "
+    "and performance metrics. It combines an SGD regressor tuned for smooth trend following, a "
+    "Passive-Aggressive regressor engineered to react quickly to momentum shifts, and a River online linear model "
+    "that adapts continuously with lightweight updates—giving you a layered view of price dynamics."
+)
+
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -100,11 +109,12 @@ HEADER_STYLE = """
 """
 
 st.markdown(HEADER_STYLE, unsafe_allow_html=True)
-st.title("Solana 4-Hour Prediction Dashboard")
-st.caption("Live price feed with ensemble model forecasts and auto-updates.")
+st.markdown("<h1 class='page-title'>Solana 4-Hour Prediction Dashboard</h1>", unsafe_allow_html=True)
+st.markdown(f"<p class='page-description'>{PROJECT_DESCRIPTION}</p>", unsafe_allow_html=True)
 
 @st.cache_resource(show_spinner=False)
-def get_model_manager() -> ModelManager:
+def get_model_manager(version: str = MODEL_MANAGER_VERSION) -> ModelManager:
+    _ = version
     return ModelManager()
 
 @st.cache_data(ttl=55, show_spinner=False)
