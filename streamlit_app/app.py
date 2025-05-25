@@ -12,41 +12,42 @@ import streamlit as st
 from streamlit_autorefresh import st_autorefresh
 
 CARD_STYLE = """
-<style>
-.model-card {
-    border-radius: 16px;
-    padding: 20px 24px;
-    background: rgba(30, 41, 59, 0.55);
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.25);
-}
-.model-card h3 {
-    margin: 0;
-    font-size: 1.4rem;
-    color: #f8fafc;
-}
-.model-card .metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-    gap: 12px;
-    margin: 20px 0;
-}
-.model-card .metric {
-    padding: 14px 16px;
-    border-radius: 12px;
-    background: rgba(15, 23, 42, 0.6);
-}
-.model-card .metric-label {
-    font-size: 0.75rem;
-    color: #94a3b8;
-    text-transform: uppercase;
-}
-.model-card .metric-value {
-    font-size: 1.15rem;
-    font-weight: 600;
-    color: #f8fafc;
-}
-</style>
+    <style>
+    .model-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 15px;
+        padding: 25px;
+        margin: 15px 0;
+        color: white;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+        transition: transform 0.2s ease-in-out;
+    }
+    .model-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+    }
+    .card-title {
+        font-size: 1.5em;
+        font-weight: bold;
+        margin-bottom: 15px;
+        border-bottom: 2px solid rgba(255,255,255,0.3);
+        padding-bottom: 10px;
+    }
+    .metric-row {
+        display: flex;
+        justify-content: space-between;
+        margin: 10px 0;
+        padding: 8px 0;
+    }
+    .metric-label {
+        font-weight: 500;
+        opacity: 0.9;
+    }
+    .metric-value {
+        font-weight: bold;
+        font-size: 1.1em;
+    }
+    </style>
 """
 
 # Ensure the project root is on sys.path
