@@ -78,6 +78,24 @@ PROJECT_DESCRIPTION = (
     "that adapts continuously with lightweight updates—giving you a layered view of price dynamics."
 )
 
+
+def _format_timestamp(ts: pd.Timestamp) -> str:
+    """Format timestamp to UTC display string."""
+    return ts.strftime("%H:%M UTC")
+
+
+def _format_prediction(value: float) -> str:
+    """Format prediction value with 2 decimal places."""
+    return f"${value:.2f}"
+
+
+def _milliseconds_until_next_minute() -> int:
+    """Calculate milliseconds until the next minute boundary."""
+    now = datetime.now(timezone.utc)
+    next_minute = (now + timedelta(minutes=1)).replace(second=0, microsecond=0)
+    return int((next_minute - now).total_seconds() * 1000)
+
+
 import pandas as pd
 import plotly.graph_objects as go
 
