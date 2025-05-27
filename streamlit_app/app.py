@@ -147,6 +147,37 @@ def _milliseconds_until_next_minute(now: datetime | None = None) -> int:
     millis = int(delta.total_seconds() * 1000)
     return max(millis, 250)
 
+
+def display_model_cards(metrics_dict: Dict[str, Dict]) -> None:
+    """Display model performance cards with enhanced styling."""
+    st.markdown(CARD_STYLE, unsafe_allow_html=True)
+    
+    cols = st.columns(3)
+    model_names = ["sgd_regressor", "passive_aggressive", "river_linear"]
+    display_titles = ["SGD Regressor", "Passive-Aggressive", "River Linear"]
+    
+    for idx, (model_name, title) in enumerate(zip(model_names, display_titles)):
+        with cols[idx]:
+            metrics = metrics_dict.get(model_name, {})
+            mae = metrics.get("mae", 0.0)
+            rmse = metrics.get("rmse", 0.0)
+            
+            card_html = f"""
+            <div class="model-card">
+                <div class="card-title">{title}</div>
+                <div class="metric-row">
+                    <span class="metric-label">MAE:</span>
+                    <span class="metric-value">${mae:.4f}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">RMSE:</span>
+                    <span class="metric-value">${rmse:.4f}</span>
+                </div>
+            </div>
+            """
+            st.markdown(card_html, unsafe_allow_html=True)
+
+
 interval_ms = _milliseconds_until_next_minute()
 _ = st_autorefresh(interval=interval_ms, limit=None, debounce=False, key="solana_price_refresh")
 
