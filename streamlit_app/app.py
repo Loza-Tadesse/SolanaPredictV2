@@ -222,7 +222,40 @@ with st.spinner("Loading models..."):
 latest_timestamp = bundle.feature_frame.index[-1] if not bundle.feature_frame.empty else None
 metrics_snapshot, retrained = _auto_retrain_models(manager, bundle.feature_frame, latest_timestamp)
 
-results = manager.predict_all(bundle.feature_frame)
+# Prepare predictions
+if bundle.inference_frame is not None and not bundle.inference_frame.empty:
+    results = manager.predict_all(bundle.feature_frame, bundle.inference_frame)
+    forecast_ts = bundle.inference_frame.index[-1]
+else:
+    results = manager.predict_all(bundle.feature_frame)
+    forecast_ts = bundle.feature_frame.index[-1]
+
+# Display header metrics
+current_price = bundle.aligned_price_frame["price"].iloc[-1]
+predictions_summary = {name: res.predictions.iloc[-1] for name, res in results.items()}
+
+header_html = f"""
+<div class="header-metrics">
+    <div class="header-metric">
+        <div class="label">Current Price</div>
+        <div class="value">{_format_prediction(current_price)}</div>
+    </div>
+    <div class="header-metric">
+        <div class="label">SGD Forecast ({_format_timestamp(forecast_ts)})</div>
+        <div class="value">{_format_prediction(predictions_summary.get('sgd_regressor', 0))}</div>
+    </div>
+    <div class="header-metric">
+        <div class="label">PA Forecast ({_format_timestamp(forecast_ts)})</div>
+        <div class="value">{_format_prediction(predictions_summary.get('passive_aggressive', 0))}</div>
+    </div>
+    <div class="header-metric">
+        <div class="label">River Forecast ({_format_timestamp(forecast_ts)})</div>
+        <div class="value">{_format_prediction(predictions_summary.get('river_linear', 0))}</div>
+    </div>
+</div>
+"""
+st.markdown(header_html, unsafe_allow_html=True)
+
 actual_price = bundle.aligned_price_frame["price"].iloc[-DISPLAY_MINUTES:]
 
 # Plot
