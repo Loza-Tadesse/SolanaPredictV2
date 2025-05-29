@@ -163,7 +163,7 @@ HEADER_STYLE = """
 """
 
 st.markdown(HEADER_STYLE, unsafe_allow_html=True)
-st.markdown("<h1 class='page-title'>Solana 4-Hour Prediction Dashboard</h1>", unsafe_allow_html=True)
+st.markdown("<h1 class='page-title'>Solana 1 Minute Prediction Dashboard</h1>", unsafe_allow_html=True)
 st.markdown(f"<p class='page-description'>{PROJECT_DESCRIPTION}</p>", unsafe_allow_html=True)
 
 @st.cache_resource(show_spinner=False)
