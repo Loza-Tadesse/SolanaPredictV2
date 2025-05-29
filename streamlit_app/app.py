@@ -281,24 +281,7 @@ st.plotly_chart(fig, use_container_width=True)
 
 st.markdown("### Model Performance")
 
-for name, result in results.items():
-    card_html = f"""
-<div class="model-card">
-    <h3>{name}</h3>
-    <div class="metrics-grid">
-        <div class="metric">
-            <div class="metric-label">MAE</div>
-            <div class="metric-value">{result.metrics['mae']:.4f}</div>
-        </div>
-        <div class="metric">
-            <div class="metric-label">RMSE</div>
-            <div class="metric-value">{result.metrics['rmse']:.4f}</div>
-        </div>
-        <div class="metric">
-            <div class="metric-label">R²</div>
-            <div class="metric-value">{result.metrics.get('r2', 0):.4f}</div>
-        </div>
-    </div>
-</div>
-"""
-    st.markdown(card_html, unsafe_allow_html=True)
+# Use the new display_model_cards function
+metrics_dict = {name: result.metrics for name, result in results.items()}
+display_model_cards(metrics_dict)
+
