@@ -85,7 +85,7 @@ from streamlit_app.data_pipeline import build_data_bundle, DEFAULT_MINUTES
 from streamlit_app.model_manager import ModelManager
 
 st.set_page_config(
-    page_title="Solana 4H Forecast Monitor",
+    page_title="Solana 1 Minute Forecast",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="collapsed",
