@@ -100,7 +100,7 @@ PROJECT_DESCRIPTION = (
     "Real-time dashboard for monitoring Solana forecasts with incremental learning, minute-by-minute updates, "
     "and performance metrics. It combines an SGD regressor tuned for smooth trend following, a "
     "Passive-Aggressive regressor engineered to react quickly to momentum shifts, and a River online linear model "
-    "that adapts continuously with lightweight updates—giving you a layered view of price dynamics."
+    "that adapts continuously with lightweight updates."
 )
 
 
