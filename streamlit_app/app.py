@@ -4,7 +4,7 @@ from __future__ import annotations
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import pandas as pd
 import plotly.graph_objects as go
@@ -14,38 +14,63 @@ from streamlit_autorefresh import st_autorefresh
 CARD_STYLE = """
     <style>
     .model-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 15px;
-        padding: 25px;
-        margin: 15px 0;
-        color: white;
-        box-shadow: 0 8px 16px rgba(0,0,0,0.1);
-        transition: transform 0.2s ease-in-out;
+        position: relative;
+        border-radius: 18px;
+        padding: 28px 24px;
+        margin: 18px 0;
+        color: #f8faff;
+        overflow: hidden;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(236, 72, 153, 0.12));
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        box-shadow: 0 18px 30px rgba(15, 23, 42, 0.18);
+        backdrop-filter: blur(18px);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+    .model-card::before {
+        content: "";
+        position: absolute;
+        inset: -40% -40% auto auto;
+        height: 180px;
+        width: 180px;
+        background: radial-gradient(circle, rgba(96, 165, 250, 0.45) 0%, rgba(59, 130, 246, 0) 65%);
+        transform: rotate(25deg);
+        z-index: 0;
     }
     .model-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.15);
+        transform: translateY(-8px);
+        box-shadow: 0 26px 38px rgba(15, 23, 42, 0.24);
     }
     .card-title {
-        font-size: 1.5em;
-        font-weight: bold;
-        margin-bottom: 15px;
-        border-bottom: 2px solid rgba(255,255,255,0.3);
-        padding-bottom: 10px;
+        position: relative;
+        z-index: 1;
+        font-size: 1.45em;
+        font-weight: 600;
+        margin-bottom: 18px;
+        letter-spacing: 0.02em;
     }
     .metric-row {
+        position: relative;
+        z-index: 1;
         display: flex;
         justify-content: space-between;
-        margin: 10px 0;
-        padding: 8px 0;
+        align-items: baseline;
+        margin: 12px 0;
+        padding: 12px 14px;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.25);
+        border: 1px solid rgba(148, 163, 184, 0.2);
     }
     .metric-label {
         font-weight: 500;
-        opacity: 0.9;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        font-size: 0.72rem;
+        color: rgba(226, 232, 240, 0.82);
     }
     .metric-value {
-        font-weight: bold;
-        font-size: 1.1em;
+        font-weight: 600;
+        font-size: 1.15em;
+        color: #fefce8;
     }
     </style>
 """
@@ -79,6 +104,11 @@ PROJECT_DESCRIPTION = (
 )
 
 
+def _slugify_name(name: str) -> str:
+    """Create a consistent lowercase identifier for model names."""
+    return name.lower().replace(" ", "_").replace("-", "_")
+
+
 def _format_timestamp(ts: pd.Timestamp) -> str:
     """Format timestamp to UTC display string."""
     return ts.strftime("%H:%M UTC")
@@ -87,6 +117,11 @@ def _format_timestamp(ts: pd.Timestamp) -> str:
 def _format_prediction(value: float) -> str:
     """Format prediction value with 2 decimal places."""
     return f"${value:.2f}"
+
+
+def _format_optional_timestamp(ts: Optional[pd.Timestamp]) -> str:
+    """Gracefully format optional timestamps for display."""
+    return _format_timestamp(ts) if ts is not None else "--"
 
 
 def _milliseconds_until_next_minute() -> int:
@@ -148,7 +183,12 @@ def _milliseconds_until_next_minute(now: datetime | None = None) -> int:
     return max(millis, 250)
 
 
-def display_model_cards(metrics_dict: Dict[str, Dict]) -> None:
+def display_model_cards(
+    metrics_dict: Dict[str, Dict],
+    latest_predictions: Dict[str, float],
+    prediction_timestamps: Dict[str, Optional[pd.Timestamp]],
+    fallback_ts: pd.Timestamp | None,
+) -> None:
     """Display model performance cards with enhanced styling."""
     st.markdown(CARD_STYLE, unsafe_allow_html=True)
     
@@ -161,10 +201,21 @@ def display_model_cards(metrics_dict: Dict[str, Dict]) -> None:
             metrics = metrics_dict.get(model_name, {})
             mae = metrics.get("mae", 0.0)
             rmse = metrics.get("rmse", 0.0)
+            prediction = latest_predictions.get(model_name)
+            timestamp = prediction_timestamps.get(model_name) or fallback_ts
+            forecast_display = _format_timestamp(timestamp) if timestamp is not None else "--"
             
             card_html = f"""
             <div class="model-card">
                 <div class="card-title">{title}</div>
+                <div class="metric-row">
+                    <span class="metric-label">Forecast for:</span>
+                    <span class="metric-value">{forecast_display}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Predicted Price:</span>
+                    <span class="metric-value">{_format_prediction(prediction) if prediction is not None else "--"}</span>
+                </div>
                 <div class="metric-row">
                     <span class="metric-label">MAE:</span>
                     <span class="metric-value">${mae:.4f}</span>
@@ -225,14 +276,32 @@ metrics_snapshot, retrained = _auto_retrain_models(manager, bundle.feature_frame
 # Prepare predictions
 if bundle.inference_frame is not None and not bundle.inference_frame.empty:
     results = manager.predict_all(bundle.feature_frame, bundle.inference_frame)
-    forecast_ts = bundle.inference_frame.index[-1]
 else:
     results = manager.predict_all(bundle.feature_frame)
-    forecast_ts = bundle.feature_frame.index[-1]
+
+forecast_ts = None
+for result in results.values():
+    if not result.predictions.empty:
+        forecast_ts = result.predictions.index[-1]
+        break
+
+if forecast_ts is None and latest_timestamp is not None:
+    forecast_ts = latest_timestamp + pd.Timedelta(minutes=1)
 
 # Display header metrics
 current_price = bundle.aligned_price_frame["price"].iloc[-1]
-predictions_summary = {name: res.predictions.iloc[-1] for name, res in results.items()}
+predictions_summary = {
+    _slugify_name(name): res.predictions.iloc[-1] for name, res in results.items()
+}
+prediction_timestamps = {
+    _slugify_name(name): (res.predictions.index[-1] if not res.predictions.empty else None)
+    for name, res in results.items()
+}
+
+sgd_forecast_time = prediction_timestamps.get("sgd_regressor") or forecast_ts
+pa_forecast_time = prediction_timestamps.get("passive_aggressive") or forecast_ts
+river_forecast_time = prediction_timestamps.get("river_linear") or forecast_ts
+
 
 header_html = f"""
 <div class="header-metrics">
@@ -241,15 +310,15 @@ header_html = f"""
         <div class="value">{_format_prediction(current_price)}</div>
     </div>
     <div class="header-metric">
-        <div class="label">SGD Forecast ({_format_timestamp(forecast_ts)})</div>
+        <div class="label">SGD Forecast ({_format_optional_timestamp(sgd_forecast_time)})</div>
         <div class="value">{_format_prediction(predictions_summary.get('sgd_regressor', 0))}</div>
     </div>
     <div class="header-metric">
-        <div class="label">PA Forecast ({_format_timestamp(forecast_ts)})</div>
+        <div class="label">PA Forecast ({_format_optional_timestamp(pa_forecast_time)})</div>
         <div class="value">{_format_prediction(predictions_summary.get('passive_aggressive', 0))}</div>
     </div>
     <div class="header-metric">
-        <div class="label">River Forecast ({_format_timestamp(forecast_ts)})</div>
+        <div class="label">River Forecast ({_format_optional_timestamp(river_forecast_time)})</div>
         <div class="value">{_format_prediction(predictions_summary.get('river_linear', 0))}</div>
     </div>
 </div>
@@ -282,6 +351,8 @@ st.plotly_chart(fig, use_container_width=True)
 st.markdown("### Model Performance")
 
 # Use the new display_model_cards function
-metrics_dict = {name: result.metrics for name, result in results.items()}
-display_model_cards(metrics_dict)
+metrics_dict = {
+    _slugify_name(name): result.metrics for name, result in results.items()
+}
+display_model_cards(metrics_dict, predictions_summary, prediction_timestamps, forecast_ts)
 
